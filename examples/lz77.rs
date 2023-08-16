@@ -6,12 +6,13 @@ const WINDOW_SIZE: usize = 255;
 struct Encoded {
     offset: usize,
     length: usize,
+    // length が 0 の場合に出力する byte 文字
     byte: u8,
 }
 
 fn find_longest_match(data: &[u8], cur: usize) -> (usize, usize) {
-    let mut max_len = 0;
-    let mut match_index = 0;
+    let mut max_length = 0;
+    let mut offset = 0;
 
     // Start at the beginning of the window (max(0, cur - WINDOW_SIZE))
     let mut start = cur.saturating_sub(WINDOW_SIZE);
@@ -20,6 +21,9 @@ fn find_longest_match(data: &[u8], cur: usize) -> (usize, usize) {
         // start から始まる文字列と現在位置(cur)から始まる文字列の最長一致を探す
         let mut reference_match_index = start;
         let mut current_match_index = cur;
+
+        // ABRACADABRA
+        //     ^start ^cur
 
         // 一致する文字列を探す
         // 一致する文字列の長さが WINDOW_SIZE を超えないようにする
@@ -32,17 +36,17 @@ fn find_longest_match(data: &[u8], cur: usize) -> (usize, usize) {
         }
 
         // 一致する文字列の長さを計算する
-        let len = reference_match_index - start;
-        if len > max_len {
-            max_len = len;
-            match_index = start;
+        let length = reference_match_index - start;
+        if length > max_length {
+            max_length = length;
+            offset = start;
         }
 
         start += 1;
     }
 
     // 相対位置と一致する文字列の長さを返す
-    (cur - match_index, max_len)
+    (cur - offset, max_length)
 }
 
 fn lz77_encode(data: &[u8]) -> Vec<Encoded> {
@@ -80,7 +84,9 @@ fn lz77_decode(compressed: &[Encoded]) -> Vec<u8> {
         if enc.length == 0 {
             decompressed.push(enc.byte);
         } else {
+            // ABRACAD|
             let start = decompressed.len() - enc.offset;
+            // for i in range(start, start + enc.length) {
             for i in start..start + enc.length {
                 decompressed.push(decompressed[i]);
             }
@@ -91,8 +97,16 @@ fn lz77_decode(compressed: &[Encoded]) -> Vec<u8> {
 }
 
 fn main() {
-    // let input = "ABRACADABRAABRACADABRA".as_bytes().to_vec();
-    let input = "AAABBBBBBBBBBBBB".as_bytes().to_vec();
+    // let input = "ABRACADABRA".as_bytes().to_vec();
+    let input = "ABBBBBBBBBBBBB".as_bytes().to_vec();
+    //
+    // ABRACADABRAABRACADABRA
+    // ^          ^
+    // A
+    // ABRACAD<7,4>
+    //
+    //
+
     let compressed = lz77_encode(&input);
     let decompressed = lz77_decode(&compressed);
     assert_eq!(input, decompressed);
